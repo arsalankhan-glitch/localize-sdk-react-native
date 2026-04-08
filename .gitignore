@@ -1,0 +1,61 @@
+# --- General / OS ---
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+*.swp
+*.bak
+*.tmp
+*.log
+
+# --- Build / Runtime ---
+.gradle/
+**/ .gradle/
+build/
+**/build/
+.kotlin/
+**/.kotlin/
+
+# --- JetBrains (Android Studio / IntelliJ) ---
+.idea/
+**/.idea/
+*.iml
+*.iws
+out/
+
+# --- Android Specific ---
+/android/local.properties
+/android/captures/
+/android/.externalNativeBuild/
+/android/.cxx/
+*.apk
+*.aar
+*.jks
+*.keystore
+
+# --- iOS / Swift Package Manager ---
+/ios/.swiftpm/
+/ios/.build/
+/ios/DerivedData/
+/ios/Example/Build/
+/ios/Example/Index/
+/ios/Example/*.xcworkspace
+/ios/Example/xcuserdata/
+/ios/Example/*.ls3
+/ios/Example/DerivedData/
+/ios/Example/.externalNativeBuild/
+Packages/
+Package.resolved
+.build/
+
+# --- Flutter Specific ---
+/flutter/.dart_tool/
+/flutter/.flutter-plugins
+/flutter/.flutter-plugins-dependencies
+/flutter/.packages
+/flutter/.pub-cache/
+/flutter/.pub/
+
+# --- Dependency Management ---
+node_modules/
+vendor/
