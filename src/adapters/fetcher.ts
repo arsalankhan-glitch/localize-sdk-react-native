@@ -1,0 +1,148 @@
+import { SDK_VERSION, type LocalizeError, type ResolvedConfig } from '../LocalizeConfig';
+import { parseLanguages, type LocalizeStore } from '../domain/LocalizeStore';
+import { devWarn, LocalizeLogEntry } from '../internal/logger';
+import { sleep } from '../internal/yield';
+
+export type FetchResult =
+  | { ok: true; store: LocalizeStore }
+  | { ok: false; error: LocalizeError; retryable: boolean; retryAfterMs?: number };
+
+export interface LocalizeFetcher {
+  fetch(timeoutMs: number): Promise<FetchResult>;
+}
+
+/** GET {baseUrl}/sdk/export?platform={platform} with X-API-Key. */
+export class HttpLocalizeFetcher implements LocalizeFetcher {
+  readonly url: string;
+
+  constructor(private readonly config: ResolvedConfig) {
+    this.url = `${config.baseUrl}/sdk/export?platform=${encodeURIComponent(config.platform)}`;
+  }
+
+  private headers(): Record<string, string> {
+    return {
+      Accept: 'application/json',
+      'Cache-Control': 'no-cache',
+      'User-Agent': `localize-sdk-${this.config.platform}/${SDK_VERSION}`,
+      ...this.config.headers,
+      'X-API-Key': this.config.apiKey,
+    };
+  }
+
+  private headersForLog(): Record<string, string> {
+    return { ...this.headers(), 'X-API-Key': this.config.apiKey ? '***' : '' };
+  }
+
+  private log(entry: LocalizeLogEntry): void {
+    if (this.config.enableLogging) console.log(entry.toPrettyString());
+  }
+
+  async fetch(timeoutMs: number): Promise<FetchResult> {
+    const fetchFn = this.config.fetchImpl ?? (globalThis as { fetch?: typeof fetch }).fetch;
+    if (!fetchFn) return fail('network', 'fetch is not available', true);
+
+    this.log(new LocalizeLogEntry('GET', this.url, this.headersForLog()));
+
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    let timedOut = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        timedOut = true;
+        controller?.abort();
+        reject(new Error(`timed out after ${timeoutMs} ms`));
+      }, timeoutMs);
+    });
+
+    try {
+      const response = await Promise.race([
+        fetchFn(this.url, {
+          method: 'GET',
+          headers: this.headers(),
+          ...(controller ? { signal: controller.signal } : {}),
+        }),
+        timeout,
+      ]);
+      const body = await Promise.race([response.text(), timeout]);
+      this.log(new LocalizeLogEntry('GET', this.url, this.headersForLog(), response.status, body));
+      return this.parse(response.status, body, response.headers?.get?.('Retry-After') ?? null);
+    } catch (e) {
+      this.log(new LocalizeLogEntry('GET', this.url, this.headersForLog(), undefined, undefined, e));
+      return timedOut
+        ? fail('timeout', `Request timed out after ${timeoutMs} ms`, true)
+        : fail('network', e instanceof Error ? e.message : String(e), true);
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
+    }
+  }
+
+  private parse(status: number, body: string, retryAfter: string | null): FetchResult {
+    const platform = this.config.platform;
+    switch (true) {
+      case status === 200:
+        break;
+      case status === 401 || status === 403:
+        devWarn(`API key rejected (${status}). Check the apiKey passed to configure().`);
+        return fail('auth', `Invalid API key (${status})`, false, status);
+      case status === 400:
+        return fail('config', 'Bad request: platform missing or invalid', false, status);
+      case status === 404:
+        return fail('config', `Export endpoint not found at ${this.config.baseUrl}`, false, status);
+      case status === 409:
+        devWarn(
+          `Platform '${platform}' is not accepted by the server (409). ` +
+            `Add it to the backend's valid platforms, or pass platform: 'other'.`,
+        );
+        return fail('config', `Invalid platform '${platform}'`, false, status);
+      case status === 429: {
+        const seconds = retryAfter ? Number(retryAfter) : NaN;
+        return {
+          ok: false,
+          error: { kind: 'network', status, message: 'Rate limited' },
+          retryable: true,
+          ...(Number.isFinite(seconds) ? { retryAfterMs: seconds * 1000 } : {}),
+        };
+      }
+      case status >= 500:
+        return fail('network', `Server error (${status})`, true, status);
+      default:
+        return fail('network', `Unexpected status ${status}`, false, status);
+    }
+
+    if (body.length === 0) return { ok: true, store: { simple: {}, plural: {} } };
+    let json: unknown;
+    try {
+      json = JSON.parse(body);
+    } catch {
+      return fail('parse', 'Response is not JSON (captive portal or proxy?)', false, status);
+    }
+    const store = parseLanguages(json);
+    if (!store) return fail('parse', 'Response has no "languages" object', false, status);
+    return { ok: true, store };
+  }
+}
+
+function fail(
+  kind: LocalizeError['kind'],
+  message: string,
+  retryable: boolean,
+  status?: number,
+): FetchResult {
+  return { ok: false, error: status === undefined ? { kind, message } : { kind, status, message }, retryable };
+}
+
+/** Exponential backoff with jitter; only retryable failures (network, timeout, 5xx, 429). */
+export async function fetchWithRetry(
+  fetcher: LocalizeFetcher,
+  timeoutMs: number,
+  retry: { attempts: number; baseDelayMs: number; maxDelayMs: number },
+): Promise<FetchResult> {
+  let result = await fetcher.fetch(timeoutMs);
+  for (let i = 0; i < retry.attempts && !result.ok && result.retryable; i++) {
+    const backoff = Math.min(retry.maxDelayMs, retry.baseDelayMs * 2 ** i);
+    const delay = result.retryAfterMs ?? backoff / 2 + Math.random() * (backoff / 2);
+    await sleep(Math.min(delay, retry.maxDelayMs));
+    result = await fetcher.fetch(timeoutMs);
+  }
+  return result;
+}
