@@ -9,15 +9,17 @@ repo, plus React hooks so the UI updates in place when new keys arrive.
 
 ## Install
 
-Git dependency, pinned to a tag. The package lives in the `react-native/` folder:
+Install from GitHub, pinned to a tag. This works with npm, Yarn and pnpm:
 
-```jsonc
-// pnpm
-"@adres/react-native-localize-sdk": "github:arsalankhan-glitch/localize-sdk#path:/react-native"
+```bash
+npm install github:arsalankhan-glitch/localize-sdk-react-native#0.1.0
 ```
 
-npm and Yarn cannot install from a subfolder of a git repo; see "Distribution" in
-`REACT_NATIVE_SDK_PLAN.md` (§D11) for the tagged-branch option.
+This adds the following to your `package.json`:
+
+```json
+"@adres/react-native-localize-sdk": "github:arsalankhan-glitch/localize-sdk-react-native#0.1.0"
+```
 
 Optional peers (install any you want):
 
@@ -163,3 +165,7 @@ npm test          # jest
 npm run typecheck
 npm run build     # lib/commonjs, lib/module, lib/typescript
 ```
+
+## License
+
+[MIT](LICENSE)
