@@ -1,13 +1,23 @@
-# @adres/react-native-localize-sdk
+# Localize React Native SDK
 
-React Native SDK for the Localize API. Same behaviour as the iOS, Android and Flutter SDKs in this
-repo, plus React hooks so the UI updates in place when new keys arrive.
+[![Version](https://img.shields.io/github/v/tag/arsalankhan-glitch/localize-sdk-react-native?sort=semver&label=version)](https://github.com/arsalankhan-glitch/localize-sdk-react-native/tags) [![License](https://img.shields.io/github/license/arsalankhan-glitch/localize-sdk-react-native)](LICENSE) ![React Native 0.71+](https://img.shields.io/badge/React%20Native-0.71%2B-61DAFB.svg) ![TypeScript](https://img.shields.io/badge/TypeScript-ready-3178C6.svg) ![Expo compatible](https://img.shields.io/badge/Expo-compatible-000020.svg)
 
-- Pure TypeScript, no native code: works in Expo Go, bare RN, and New and Old Architecture (iOS and Android).
-- No required dependencies. Storage and locale detection use optional peers when installed.
-- React 18+ (RN 0.71+).
+## 👋 Introduction
 
-## Install
+Localize lets your team manage your app's text and translations in one place and update them without shipping a new release. The SDK downloads the latest translations at runtime, caches them on the device, and falls back to the strings bundled in your app when it's offline.
+
+This is the TypeScript SDK for React Native, with React hooks that update your UI as soon as new translations arrive. It has no native code, so it works in Expo Go, bare React Native, and both the New and Old Architecture.
+
+Also available for [iOS](https://github.com/arsalankhan-glitch/localize-sdk-ios) · [Android](https://github.com/arsalankhan-glitch/localize-sdk-android) · [Flutter](https://github.com/arsalankhan-glitch/localize-sdk-flutter).
+
+To get started, sign up [here](https://localiq.yaxbi.com/signup).
+
+## 📋 Requirements
+
+- React Native 0.71+ (React 18+)
+- No required dependencies. Storage and locale detection use optional peers when installed (see Installation).
+
+## 🎉 Installation
 
 Install from GitHub, pinned to a tag. This works with npm, Yarn and pnpm:
 
@@ -32,7 +42,7 @@ Optional peers (install any you want):
 
 Without any storage module, keys are kept in memory only (a dev warning says so).
 
-## Setup
+## 🚀 Setup
 
 ```tsx
 import { LocalizeSDK, LocalizeProvider } from '@adres/react-native-localize-sdk';
@@ -50,7 +60,7 @@ export default function App() {
 
 Or let the provider configure it: `<LocalizeProvider config={{ apiKey: 'pk_xxx' }} fallback={<Splash />}>`.
 
-## Usage
+## 💡 Usage
 
 ```tsx
 import { T, useLocalize, useLocalizedString } from '@adres/react-native-localize-sdk';
@@ -84,7 +94,7 @@ await LocalizeSDK.refresh(); // true when new keys were applied
 Static getters do not re-render components. Use the hooks or `<T>`, or re-render yourself from
 `onKeysUpdated`.
 
-## How it works
+## 🔍 How it works
 
 1. **Start (`configure`)**: loads the current locale (and fallback locale) from the cache, or the
    bundled keys from `localLoader` if there is no cache, and resolves. Takes milliseconds.
@@ -102,7 +112,7 @@ Lookup order: current locale → fallback locale → `bundleFallback` (locale, t
 
 `initStrategy: 'api-first'` waits for the API first (up to `initTimeoutMs`), like iOS/Flutter.
 
-## Configuration
+## ⚙️ Configuration
 
 | Option | Default | Description |
 |--------|---------|-------------|
@@ -133,14 +143,14 @@ Lookup order: current locale → fallback locale → `bundleFallback` (locale, t
 | `enableLogging` | dev only | Never logs in release builds; API key is redacted |
 | `headers`, `fetchImpl` | — | Extra headers; custom transport |
 
-## Other APIs
+## 🧩 Other APIs
 
 `createLocalizeClient(config)` (independent instance; pass to `<LocalizeProvider client>`),
 `getStringOrNull`, `getPluralOrNull`, `hasKey`, `getAllKeys`, `getLoadedLocales`, `getSource`,
 `preloadLocale`, `clearCache({ all })`, `isRTL`, `subscribe`, `useLocale`, `useLocalizedPlural`,
 `parseLocalBundleJson`, `resetForTesting`.
 
-## Testing your app
+## 🧪 Testing your app
 
 The package's `react-native` entry points at TypeScript source, so add it to Jest's
 `transformIgnorePatterns`:
@@ -152,12 +162,12 @@ transformIgnorePatterns: ['node_modules/(?!(jest-)?@?react-native|@adres/react-n
 Pass `fetchImpl` and `storage: memoryStorageAdapter()` to run without the network, and call
 `LocalizeSDK.resetForTesting()` between tests.
 
-## Security
+## 🔒 Security
 
 The API key ships inside the JS bundle and can be extracted. Treat it as a read-only export key,
 and keep it out of git (`react-native-config`, EAS secrets).
 
-## Development
+## 🛠️ Development
 
 ```bash
 npm install
@@ -166,6 +176,6 @@ npm run typecheck
 npm run build     # lib/commonjs, lib/module, lib/typescript
 ```
 
-## License
+## 📄 License
 
 [MIT](LICENSE)
